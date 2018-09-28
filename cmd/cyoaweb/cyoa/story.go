@@ -15,11 +15,12 @@ func init() {
 	tpl = template.Must(template.New("").Parse(defaultHandlerTmpl))
 }
 
-func NewHandler(s Story, t *template.Template) http.Handler {
-	if t == nil {
-		t = tpl
+func NewHandler(s Story, opts ...HandlerOption) http.Handler {
+	h := handler{s, tpl}
+	for _, opt := range opts {
+		opt(&h)
 	}
-	return handler{s, t}
+	return h
 }
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -27,13 +28,14 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if path == "" || path == "/" {
 		path = "/intro"
 	}
+
 	// get sllce from index 1 to rest
 	// "/intro" -> "intro"
 	path = path[1:]
 
 	//				     ["intro"]
 	if chapter, ok := h.s[path]; ok {
-		err := tpl.Execute(w, chapter)
+		err := h.t.Execute(w, chapter)
 		if err != nil {
 			log.Printf("%v", err)
 			http.Error(w, "Something went wrong...", http.StatusBadRequest)
@@ -50,6 +52,19 @@ func JsonStory(r io.Reader) (Story, error) {
 		return nil, err
 	}
 	return story, nil
+}
+
+func WithTemplate(t *template.Template) HandlerOption {
+	return func(h *handler) {
+		h.t = t
+	}
+}
+
+type HandlerOption func(h *handler)
+
+type HandlerOpts struct {
+	*template.Template
+	ParseFunc func(r *http.Request) string
 }
 
 type handler struct {
