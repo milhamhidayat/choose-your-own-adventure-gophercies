@@ -11,6 +11,7 @@ import (
 	"strings"
 )
 
+// default story template
 var storyTmpl = `
 <!DOCTYPE html>
 <html lang="en">
@@ -79,17 +80,22 @@ var storyTmpl = `
 </html>`
 
 func main() {
+	// create "port" flag
 	port := flag.Int("port", 3000, "the port to start the CYOA web application on")
+
+	// create json "file" flag
 	filename := flag.String("file", "gopher.json", "the JSON file with the CYOA story")
 	flag.Parse()
 	fmt.Printf("Using the story in %s. \n", *filename)
 
+	// open json file
 	f, err := os.Open(*filename)
 
 	if err != nil {
 		panic(err)
 	}
 
+	// read json file
 	story, err := cyoa.JsonStory(f)
 	if err != nil {
 		panic(err)
@@ -98,11 +104,21 @@ func main() {
 	// tpl := template.Must(template.New("").Parse("Hello"))
 	// h := cyoa.NewHandler(story, cyoa.WithTemplate(tpl))
 
+	// template.New("") -> create template with "" name
+	// templat4.Parse(storyTmpl) -> parse text from storyTmpl variable as template for t
+	// template.Must() -> wrap around a function , return pointer to template
+	// it will panic if something is wrong with template
 	tpl := template.Must(template.New("").Parse(storyTmpl))
 
+	// create custom http handler
+	// accept
+	// - story (json data)
+	// - cyoa.WithTemplate(tp1) -> function to return function -> handler struct
+	// - cyoa.WithPathFunc(pathFn) -> function to return function -> handler struct
 	h := cyoa.NewHandler(story, cyoa.WithTemplate(tpl), cyoa.WithPathFunc(pathFn))
 
 	mux := http.NewServeMux()
+	// will cqll ServeHTTP automatically
 	mux.Handle("/story/", h)
 
 	fmt.Printf("Starting the server on port : %d\n", *port)
@@ -111,11 +127,16 @@ func main() {
 }
 
 func pathFn(r *http.Request) string {
+	// get url path, remove spaces
 	path := strings.TrimSpace(r.URL.Path)
+
+	// change url path to /story/intro
+	// if url path is /story or /story/
 	if path == "/story" || path == "/story/" {
 		path = "/story/intro"
 	}
 	// get sllce from index 1 to rest
-	// "/intro" -> "intro"
+	// get len(/story/) -> 6
+	// slice string from 0 to 6 index, return string after index 7
 	return path[len("/story/"):]
 }

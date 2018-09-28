@@ -37,6 +37,81 @@ type Option struct {
 
 var tpl *template.Template
 
+func init() {
+	tpl = template.Must(template.New("").Parse(defaultHandlerTmpl))
+}
+
+// WithTemplate - Higher Order Function
+// return func (type), assign h.t (handler struct) with t (template) parameter
+func WithTemplate(t *template.Template) HandlerOption {
+	return func(h *handler) {
+		h.t = t
+	}
+}
+
+// WithPathFunc - Higher order function
+// accept -> function that return string
+// return -> func (type), assign h.pathFn(handler struct) with fn(function) parameter
+func WithPathFunc(fn func(r *http.Request) string) HandlerOption {
+	return func(h *handler) {
+		h.pathFn = fn
+	}
+}
+
+// NewHandler - return http handler
+func NewHandler(s Story, opts ...HandlerOption) http.Handler {
+	// set handler struct with value
+	// - story (gopher.json file)
+	// - opts ..HandlerOption -> func to set template, func to set path function
+	h := handler{s, tpl, defaultPathFn}
+	// loop function argument
+	// call the function,
+	// set template with template argument to handle struct
+	// set pathFn with function argument to handle struct
+	for _, opt := range opts {
+		opt(&h)
+	}
+	// return handler
+	return h
+}
+
+func defaultPathFn(r *http.Request) string {
+	path := strings.TrimSpace(r.URL.Path)
+	if path == "" || path == "/" {
+		path = "/intro"
+	}
+	// get sllce from index 1 to rest
+	// "/intro" -> "intro"
+	return path[1:]
+}
+
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// will get path /story/{path}
+	path := h.pathFn(r)
+
+	// get story data from handler.s (Story)
+	if chapter, ok := h.s[path]; ok {
+		// write data to template
+		err := h.t.Execute(w, chapter)
+		if err != nil {
+			log.Printf("%v", err)
+			http.Error(w, "Something went wrong...", http.StatusBadRequest)
+		}
+		return
+	}
+	http.Error(w, "Chapter not found", http.StatusNotFound)
+}
+
+// JsonStory - read and get json data from file
+func JsonStory(r io.Reader) (Story, error) {
+	d := json.NewDecoder(r)
+	var story Story
+	if err := d.Decode(&story); err != nil {
+		return nil, err
+	}
+	return story, nil
+}
+
 var defaultHandlerTmpl = `
 <!DOCTYPE html>
 <html lang="en">
@@ -103,61 +178,3 @@ var defaultHandlerTmpl = `
 </body>
 
 </html>`
-
-func init() {
-	tpl = template.Must(template.New("").Parse(defaultHandlerTmpl))
-}
-
-func WithTemplate(t *template.Template) HandlerOption {
-	return func(h *handler) {
-		h.t = t
-	}
-}
-
-func WithPathFunc(fn func(r *http.Request) string) HandlerOption {
-	return func(h *handler) {
-		h.pathFn = fn
-	}
-}
-
-func NewHandler(s Story, opts ...HandlerOption) http.Handler {
-	h := handler{s, tpl, defaultPathFn}
-	for _, opt := range opts {
-		opt(&h)
-	}
-	return h
-}
-
-func defaultPathFn(r *http.Request) string {
-	path := strings.TrimSpace(r.URL.Path)
-	if path == "" || path == "/" {
-		path = "/intro"
-	}
-	// get sllce from index 1 to rest
-	// "/intro" -> "intro"
-	return path[1:]
-}
-
-func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := h.pathFn(r)
-
-	//				     ["intro"]
-	if chapter, ok := h.s[path]; ok {
-		err := h.t.Execute(w, chapter)
-		if err != nil {
-			log.Printf("%v", err)
-			http.Error(w, "Something went wrong...", http.StatusBadRequest)
-		}
-		return
-	}
-	http.Error(w, "Chapter not found", http.StatusNotFound)
-}
-
-func JsonStory(r io.Reader) (Story, error) {
-	d := json.NewDecoder(r)
-	var story Story
-	if err := d.Decode(&story); err != nil {
-		return nil, err
-	}
-	return story, nil
-}
