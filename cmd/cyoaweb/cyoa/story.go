@@ -15,8 +15,11 @@ func init() {
 	tpl = template.Must(template.New("").Parse(defaultHandlerTmpl))
 }
 
-func NewHandler(s Story) http.Handler {
-	return handler{s}
+func NewHandler(s Story, t *template.Template) http.Handler {
+	if t == nil {
+		t = tpl
+	}
+	return handler{s, t}
 }
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -51,6 +54,7 @@ func JsonStory(r io.Reader) (Story, error) {
 
 type handler struct {
 	s Story
+	t *template.Template
 }
 
 type Story map[string]Chapter
