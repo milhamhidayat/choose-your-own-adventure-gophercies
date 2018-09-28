@@ -9,57 +9,6 @@ import (
 	"strings"
 )
 
-var tpl *template.Template
-
-func init() {
-	tpl = template.Must(template.New("").Parse(defaultHandlerTmpl))
-}
-
-func NewHandler(s Story, opts ...HandlerOption) http.Handler {
-	h := handler{s, tpl}
-	for _, opt := range opts {
-		opt(&h)
-	}
-	return h
-}
-
-func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimSpace(r.URL.Path)
-	if path == "" || path == "/" {
-		path = "/intro"
-	}
-
-	// get sllce from index 1 to rest
-	// "/intro" -> "intro"
-	path = path[1:]
-
-	//				     ["intro"]
-	if chapter, ok := h.s[path]; ok {
-		err := h.t.Execute(w, chapter)
-		if err != nil {
-			log.Printf("%v", err)
-			http.Error(w, "Something went wrong...", http.StatusBadRequest)
-		}
-		return
-	}
-	http.Error(w, "Chapter not found", http.StatusNotFound)
-}
-
-func JsonStory(r io.Reader) (Story, error) {
-	d := json.NewDecoder(r)
-	var story Story
-	if err := d.Decode(&story); err != nil {
-		return nil, err
-	}
-	return story, nil
-}
-
-func WithTemplate(t *template.Template) HandlerOption {
-	return func(h *handler) {
-		h.t = t
-	}
-}
-
 type HandlerOption func(h *handler)
 
 type HandlerOpts struct {
@@ -68,8 +17,9 @@ type HandlerOpts struct {
 }
 
 type handler struct {
-	s Story
-	t *template.Template
+	s      Story
+	t      *template.Template
+	pathFn func(r *http.Request) string
 }
 
 type Story map[string]Chapter
@@ -84,6 +34,8 @@ type Option struct {
 	Text    string `json:"text"`
 	Chapter string `json:"arc"`
 }
+
+var tpl *template.Template
 
 var defaultHandlerTmpl = `
 <!DOCTYPE html>
@@ -151,3 +103,61 @@ var defaultHandlerTmpl = `
 </body>
 
 </html>`
+
+func init() {
+	tpl = template.Must(template.New("").Parse(defaultHandlerTmpl))
+}
+
+func WithTemplate(t *template.Template) HandlerOption {
+	return func(h *handler) {
+		h.t = t
+	}
+}
+
+func WithPathFunc(fn func(r *http.Request) string) HandlerOption {
+	return func(h *handler) {
+		h.pathFn = fn
+	}
+}
+
+func NewHandler(s Story, opts ...HandlerOption) http.Handler {
+	h := handler{s, tpl, defaultPathFn}
+	for _, opt := range opts {
+		opt(&h)
+	}
+	return h
+}
+
+func defaultPathFn(r *http.Request) string {
+	path := strings.TrimSpace(r.URL.Path)
+	if path == "" || path == "/" {
+		path = "/intro"
+	}
+	// get sllce from index 1 to rest
+	// "/intro" -> "intro"
+	return path[1:]
+}
+
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := h.pathFn(r)
+
+	//				     ["intro"]
+	if chapter, ok := h.s[path]; ok {
+		err := h.t.Execute(w, chapter)
+		if err != nil {
+			log.Printf("%v", err)
+			http.Error(w, "Something went wrong...", http.StatusBadRequest)
+		}
+		return
+	}
+	http.Error(w, "Chapter not found", http.StatusNotFound)
+}
+
+func JsonStory(r io.Reader) (Story, error) {
+	d := json.NewDecoder(r)
+	var story Story
+	if err := d.Decode(&story); err != nil {
+		return nil, err
+	}
+	return story, nil
+}
