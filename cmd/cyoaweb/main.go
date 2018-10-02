@@ -2,6 +2,7 @@ package main
 
 import (
 	cyoa "choose-your-own-adventure-gophercies/cmd/cyoaweb/cyoa"
+	m "choose-your-own-adventure-gophercies/cmd/cyoaweb/models"
 	"flag"
 	"fmt"
 	"html/template"
@@ -79,64 +80,75 @@ var storyTmpl = `
 
 </html>`
 
-func main() {
-	// create "port" flag
-	port := flag.Int("port", 3000, "the port to start the CYOA web application on")
+type StoryCli struct {
+	Story m.Story
+}
 
-	// create json "file" flag
+func showStory(s *StoryCli, chapter string) {
+	fmt.Println("=========")
+	fmt.Println(*s.Story)
+	fmt.Println("=========")
+	// news := story[chapter]
+
+	// for _, p := range news.Paragraphs {
+	// 	fmt.Printf("%v\n", p)
+	// }
+
+	// fmt.Println("Choose your answer")
+
+	// for i, o := range news.Options {
+	// 	fmt.Printf("%v. [%v]\n", i+1, o.Chapter)
+	// 	fmt.Printf("%v\n", o.Text)
+	// }
+
+	// reader := bufio.NewReader(os.Stdin)
+	// answer, _ := reader.ReadString('\n')
+	// i, _ := strconv.Atoi(strings.TrimSpace(strings.ToLower(strings.Replace(answer, "\n", "", -1))))
+
+	// next := news.Options[i-1].Chapter
+	// fmt.Println("next chapter")
+	// fmt.Println(next)
+
+}
+
+func main() {
+	port := flag.Int("port", 3000, "the port to start the CYOA web application on")
+	isCli := flag.Bool("cli", false, "Choose CLI or not")
 	filename := flag.String("file", "gopher.json", "the JSON file with the CYOA story")
 	flag.Parse()
 	fmt.Printf("Using the story in %s. \n", *filename)
 
-	// open json file
 	f, err := os.Open(*filename)
 
 	if err != nil {
 		panic(err)
 	}
 
-	// read json file
 	story, err := cyoa.JsonStory(f)
 	if err != nil {
 		panic(err)
 	}
 
-	// tpl := template.Must(template.New("").Parse("Hello"))
-	// h := cyoa.NewHandler(story, cyoa.WithTemplate(tpl))
+	if *isCli {
+		res := &StoryCli{Story: story}
+		showStory(res, "intro")
+	} else {
+		tpl := template.Must(template.New("").Parse(storyTmpl))
 
-	// template.New("") -> create template with "" name
-	// templat4.Parse(storyTmpl) -> parse text from storyTmpl variable as template for t
-	// template.Must() -> wrap around a function , return pointer to template
-	// it will panic if something is wrong with template
-	tpl := template.Must(template.New("").Parse(storyTmpl))
+		h := cyoa.NewHandler(story, cyoa.WithTemplate(tpl), cyoa.WithPathFunc(pathFn))
 
-	// create custom http handler
-	// accept
-	// - story (json data)
-	// - cyoa.WithTemplate(tp1) -> function to return function -> handler struct
-	// - cyoa.WithPathFunc(pathFn) -> function to return function -> handler struct
-	h := cyoa.NewHandler(story, cyoa.WithTemplate(tpl), cyoa.WithPathFunc(pathFn))
-
-	mux := http.NewServeMux()
-	// will cqll ServeHTTP automatically
-	mux.Handle("/story/", h)
-
-	fmt.Printf("Starting the server on port : %d\n", *port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), mux))
+		mux := http.NewServeMux()
+		mux.Handle("/story/", h)
+		fmt.Printf("Starting the server on port : %d\n", *port)
+		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), mux))
+	}
 
 }
 
 func pathFn(r *http.Request) string {
-	// get url path, remove spaces
 	path := strings.TrimSpace(r.URL.Path)
-
-	// change url path to /story/intro
-	// if url path is /story or /story/
 	if path == "/story" || path == "/story/" {
 		path = "/story/intro"
 	}
-	// get sllce from index 1 to rest
-	// get len(/story/) -> 6
-	// slice string from 0 to 6 index, return string after index 7
 	return path[len("/story/"):]
 }

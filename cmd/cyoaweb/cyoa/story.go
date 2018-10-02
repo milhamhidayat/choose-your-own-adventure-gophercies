@@ -1,6 +1,7 @@
 package cyoa
 
 import (
+	m "choose-your-own-adventure-gophercies/cmd/cyoaweb/models"
 	"encoding/json"
 	"html/template"
 	"io"
@@ -17,22 +18,9 @@ type HandlerOpts struct {
 }
 
 type handler struct {
-	s      Story
+	s      m.Story
 	t      *template.Template
 	pathFn func(r *http.Request) string
-}
-
-type Story map[string]Chapter
-
-type Chapter struct {
-	Title      string   `json:"title"`
-	Paragraphs []string `json:"story"`
-	Options    []Option `json:"options"`
-}
-
-type Option struct {
-	Text    string `json:"text"`
-	Chapter string `json:"arc"`
 }
 
 var tpl *template.Template
@@ -59,7 +47,7 @@ func WithPathFunc(fn func(r *http.Request) string) HandlerOption {
 }
 
 // NewHandler - return http handler
-func NewHandler(s Story, opts ...HandlerOption) http.Handler {
+func NewHandler(s m.Story, opts ...HandlerOption) http.Handler {
 	// set handler struct with value
 	// - story (gopher.json file)
 	// - opts ..HandlerOption -> func to set template, func to set path function
@@ -103,9 +91,9 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // JsonStory - read and get json data from file
-func JsonStory(r io.Reader) (Story, error) {
+func JsonStory(r io.Reader) (m.Story, error) {
 	d := json.NewDecoder(r)
-	var story Story
+	var story m.Story
 	if err := d.Decode(&story); err != nil {
 		return nil, err
 	}
