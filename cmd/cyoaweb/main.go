@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	cyoa "choose-your-own-adventure-gophercies/cmd/cyoaweb/cyoa"
 	m "choose-your-own-adventure-gophercies/cmd/cyoaweb/models"
 	"flag"
@@ -9,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -85,30 +87,37 @@ type StoryCli struct {
 }
 
 func showStory(s *StoryCli, chapter string) {
-	fmt.Println("=========")
-	fmt.Println(s.Story["intro"])
-	fmt.Println("=========")
-	// news := story[chapter]
+	news := s.Story[chapter]
 
-	// for _, p := range news.Paragraphs {
-	// 	fmt.Printf("%v\n", p)
-	// }
+	fmt.Println("============================")
+	fmt.Println(news.Title)
+	fmt.Println("============================")
 
-	// fmt.Println("Choose your answer")
+	for _, p := range news.Paragraphs {
+		fmt.Printf("%v\n", p)
+	}
 
-	// for i, o := range news.Options {
-	// 	fmt.Printf("%v. [%v]\n", i+1, o.Chapter)
-	// 	fmt.Printf("%v\n", o.Text)
-	// }
+	if chapter == "home" {
+		os.Exit(0)
+	}
 
-	// reader := bufio.NewReader(os.Stdin)
-	// answer, _ := reader.ReadString('\n')
-	// i, _ := strconv.Atoi(strings.TrimSpace(strings.ToLower(strings.Replace(answer, "\n", "", -1))))
+	fmt.Println("############################")
+	fmt.Println("Choose your answer : ")
+	fmt.Println("############################")
 
-	// next := news.Options[i-1].Chapter
-	// fmt.Println("next chapter")
-	// fmt.Println(next)
+	for i, o := range news.Options {
+		fmt.Printf("%v. [%v]\n", i+1, o.Chapter)
+		fmt.Printf("%v\n", o.Text)
+	}
 
+	fmt.Println("Your answer : ")
+
+	reader := bufio.NewReader(os.Stdin)
+	answer, _ := reader.ReadString('\n')
+	i, _ := strconv.Atoi(strings.TrimSpace(strings.ToLower(strings.Replace(answer, "\n", "", -1))))
+
+	next := news.Options[i-1].Chapter
+	showStory(s, next)
 }
 
 func main() {
