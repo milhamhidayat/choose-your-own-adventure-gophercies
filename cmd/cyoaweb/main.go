@@ -86,7 +86,7 @@ type StoryCli struct {
 
 func showStory(s *StoryCli, chapter string) {
 	fmt.Println("=========")
-	fmt.Println(*s.Story)
+	fmt.Println(s.Story["intro"])
 	fmt.Println("=========")
 	// news := story[chapter]
 
