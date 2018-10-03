@@ -118,16 +118,13 @@ func receiveAnswer(options []m.Option) int {
 	}
 
 	newAnswer := i - 1
-	fmt.Println("=============")
-	fmt.Println(newAnswer)
-	fmt.Println("=============")
 
 	if newAnswer > optionLen || newAnswer < 0 {
 		fmt.Println("Sorry, your answer is not in options")
 		receiveAnswer(options)
 	}
 
-	return i
+	return newAnswer
 
 }
 
@@ -146,29 +143,9 @@ func showStory(s *StoryCli, chapter string) {
 		os.Exit(0)
 	}
 
-	res := receiveAnswer(news.Options)
+	answer := receiveAnswer(news.Options)
 
-	// fmt.Println("############################")
-	// fmt.Println("Choose your answer : ")
-	// fmt.Println("############################")
-
-	// for i, o := range news.Options {
-	// 	fmt.Printf("%v. [%v]\n", i+1, o.Chapter)
-	// 	fmt.Printf("%v\n", o.Text)
-	// }
-
-	// fmt.Println("Your answer : ")
-
-	// reader := bufio.NewReader(os.Stdin)
-	// answer, _ := reader.ReadString('\n')
-
-	// i, err := strconv.Atoi(strings.TrimSpace(strings.ToLower(strings.Replace(answer, "\n", "", -1))))
-
-	// if err != nil {
-	// 	fmt.Println("Your answer is not a number")
-	// }
-
-	next := news.Options[res].Chapter
+	next := news.Options[answer].Chapter
 	showStory(s, next)
 }
 
